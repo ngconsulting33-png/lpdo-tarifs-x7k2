@@ -139,7 +139,12 @@ def lire_sources(demo, manual):
 
         # --- cotations gold.fr
         try:
-            html, _ = nav.page(S.URL_GOLDFR, attendre_texte=r"Maple")
+            try:
+                html, _ = nav.page(S.URL_GOLDFR, attendre_texte=r"Maple")
+            except Exception as e1:  # une seconde tentative, sans attente de texte
+                html, txt = nav.page(S.URL_GOLDFR, timeout=45000)
+                if "Maple" not in html:
+                    raise ValueError(f"page reçue sans tableau ({len(html)} octets) : {txt[:120]!r} / 1re erreur : {str(e1)[:80]}")
             gf = S.parse_goldfr(html)
             if len(gf) < 5:
                 raise ValueError(f"seulement {len(gf)} lignes lues")
