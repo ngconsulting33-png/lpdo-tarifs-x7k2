@@ -17,6 +17,7 @@ URL_OR = "https://or.bullionvault.fr/Cours-De-L-Or.do"
 URL_ARGENT = "https://or.bullionvault.fr/Cours-De-L-Argent-Metal.do"
 URL_GOLDFR = "https://www.gold.fr/cours-argent-prix-de-l-argent/"
 URL_GODOT_ARGENT = "https://www.achat-or-et-argent.fr/argent/cours-de-l-argent"
+URL_GODOT_OR = "https://www.achat-or-et-argent.fr/or/cours-de-l-or"
 URL_GODOT_BIJOUX = "https://www.achat-or-et-argent.fr/rachat-de-bijoux/commander-son-kit"
 URL_FIDSO = "https://www.fidso-or.com/arcachon/{cat}/{slug}"
 
@@ -117,17 +118,23 @@ def parse_goldfr(html):
 
 
 def parse_godot_argent(html):
-    """{nom normalisé: {'nom','achat','vente'}} (Vente = ce que le client reçoit)."""
+    """{nom normalisé: {'nom','valeur','achat','vente'}} pour les tableaux de achat-or-et-argent.fr
+    (argent comme or). Tolère colonnes vides ou en plus : le nom est la première cellule avec des
+    lettres sans prix ; 'achat' et 'vente' sont les deux derniers montants en euros de la ligne
+    (« Vous achetez » / « Vous vendez » : vente = ce que le client reçoit)."""
     out = {}
     for cells in html_rows(html):
-        if len(cells) < 5:
+        nom = next((c.strip() for c in cells if re.search(r"[A-Za-zÀ-ÿ]{3}", c) and "€" not in c and "%" not in c), None)
+        montants = [parse_eur(c) for c in cells if "€" in c]
+        montants = [m for m in montants if m is not None]
+        if not nom or len(montants) < 2:
             continue
-        vals = [parse_eur(c) for c in cells[1:5]]
-        if None in vals:
-            continue
-        # colonnes : valeur intrinsèque | prime % | achat | vente
-        out[norm(cells[0])] = {"nom": cells[0], "valeur": vals[0], "achat": vals[2], "vente": vals[3]}
+        out[norm(nom)] = {"nom": nom, "valeur": montants[0] if len(montants) >= 3 else None,
+                          "achat": montants[-2], "vente": montants[-1]}
     return out
+
+
+parse_godot_or = parse_godot_argent
 
 
 def parse_godot_bijoux(text):
