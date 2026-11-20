@@ -97,16 +97,22 @@ def parse_bullionvault(text):
 
 
 def parse_goldfr(html):
-    """{nom normalisé: {'nom', 'prix', 'prime'}} depuis le tableau de gold.fr."""
+    """{nom normalisé: {'nom', 'prix', 'prime'}} depuis le tableau de gold.fr.
+    Tolère une colonne vide (miniature) avant l'intitulé : le nom est la première cellule
+    avec des lettres, suivie d'une cellule contenant un prix."""
     out = {}
     for cells in html_rows(html):
-        if len(cells) < 2:
-            continue
-        prix = parse_eur(cells[1])
-        if prix is None or not re.search(r"[A-Za-zÀ-ÿ]", cells[0]):
-            continue
-        prime = parse_eur(cells[2]) if len(cells) > 2 and "%" in cells[2] else None
-        out[norm(cells[0])] = {"nom": cells[0], "prix": prix, "prime": prime}
+        for i in range(len(cells) - 1):
+            nom = cells[i].strip()
+            if not re.search(r"[A-Za-zÀ-ÿ]{3}", nom) or "€" in nom:
+                continue
+            prix = parse_eur(cells[i + 1])
+            if prix is None:
+                continue
+            pcts = [c for c in cells[i + 2:] if "%" in c]  # variation puis prime : on prend la dernière
+            prime = parse_eur(pcts[-1]) if pcts else None
+            out[norm(nom)] = {"nom": nom, "prix": prix, "prime": prime}
+            break
     return out
 
 
@@ -160,7 +166,7 @@ class Navigateur:
         self._pw = sync_playwright().start()
         self._browser = self._pw.chromium.launch()
         self._ctx = self._browser.new_context(
-            locale="fr-FR", user_agent="Mozilla/5.0 (X11; Linux x86_64) LPDO-veille-tarifs/1.0")
+            locale="fr-FR", user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
         return self
 
     def __exit__(self, *a):
