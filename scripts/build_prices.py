@@ -354,8 +354,18 @@ def main():
         if g:
             comp_or.append({"name": n, "lpdo": [t["net"] if t else None for t in row["tiers"]],
                             "godot_vente": g["vente"], "godot_achat": g["achat"]})
+    def comp_vente(cle, mapping, base):
+        res_ = []
+        for row in out[cle]["rows"]:
+            n = row["name"]
+            g = base.get(S.norm(mapping[n])) if n in mapping else None
+            if g:
+                res_.append({"name": n, "lpdo": [t["prix"] if t else None for t in row["tiers"]], "godot_achat": g["achat"]})
+        return res_
+
     out["concurrents"] = {
         "argent": comp, "or": comp_or,
+        "argent_vente": comp_vente("argent_vente", GODOT, ga), "or_vente": comp_vente("or_vente", GODOT_OR, go),
         "bijoux": {"godot": data.get("godot_bijoux"),
                    "fidso": fb or None, "fidso_calcule": calcule,
                    "fidso_date": manual.get("fidso_bijoux_date")},
