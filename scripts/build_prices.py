@@ -28,8 +28,8 @@ GOLDFR = {
     "Britannia 1 oz": "Britannia 1 oz",
     "American Eagle 1oz": "American Eagle 1 oz",
     "Krugerrand 1 oz": "Krugerrand Argent 1 oz",
-    "China Panda": "China Panda 30 g",
-    "Koala 1 kg": "Koala Argent 1 kg",
+    "China Panda": "China Panda 30g",
+    "Koala 1 kg": "Koala Argent 1Kg",
     "Libertad Mexicaine": "American Eagle 1 oz",  # dans le fichier : B38 = B34
     "20 Fr Turin": "20 Francs Turin",
     "50 Fr Hercule": "50 Francs Hercule",
@@ -38,7 +38,7 @@ GOLDFR = {
     "10 Fr Turin": "10 Francs Turin",
     "5 Fr Hercule ou ECU": "5 Francs Hercule",
     "100 fr Argent": "100 Francs en Argent",
-    "Kookabura 1 Kg": "Kookaburra 1 kg",
+    "Kookabura 1 Kg": "Kookaburra 1Kg",
 }
 
 # ligne LPDO -> nom chez Godot (achat-or-et-argent.fr)
@@ -80,10 +80,10 @@ DEMO = {
     "goldfr": {
         "Maple Leaf 1 oz": 47.66, "Vienna Philharmonic 1 oz": 47.42, "Kangourou 1 oz": 46.30,
         "Britannia 1 oz": 47.42, "American Eagle 1 oz": 49.36, "Krugerrand Argent 1 oz": 47.42,
-        "China Panda 30 g": 52.11, "Koala Argent 1 kg": 1574.56, "20 Francs Turin": 19.05,
+        "China Panda 30g": 52.11, "Koala Argent 1Kg": 1574.56, "20 Francs Turin": 19.05,
         "50 Francs Hercule": 37.49, "5 Francs Semeuse": 13.79, "10 Francs Hercule": 31.24,
         "10 Francs Turin": 9.53, "5 Francs Hercule": 33.77, "100 Francs en Argent": 18.58,
-        "Kookaburra 1 kg": 1550.96},
+        "Kookaburra 1Kg": 1550.96},
     "godot_argent": {
         "Maple Leaf 1 Once Argent": (46.30, 35.80), "Krugerrand 1 Once Argent": (46.30, 35.80),
         "Silver Eagle 1 Once": (48.40, 35.80), "50 Francs Hercule 1974 1980": (37.50, 28.10),
