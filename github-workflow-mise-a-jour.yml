@@ -4,8 +4,8 @@ on:
   push:
     branches: [main]
   schedule:
-    # toutes les 30 min, de ~7h à ~20h (heure de Paris), du lundi au samedi
-    - cron: "*/30 6-18 * * 1-6"
+    # toutes les 30 min, de 6h à 20h (heure de Paris, hiver), du lundi au samedi ; minutes décalées car GitHub saute souvent :00 et :30
+    - cron: "11,41 5-19 * * 1-6"
   workflow_dispatch:
 
 permissions:
