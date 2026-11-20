@@ -54,6 +54,26 @@ GODOT = {
     "Lingotin 250 g": "Lingot 250g Argent",
 }
 
+# ligne LPDO (or) -> nom chez Godot
+GODOT_OR = {
+    "Napoléon 20 Frs": "20 Francs Napoléon",
+    "Demi-Napoléon": "10 Francs Napoléon",
+    "Croix Suisse 20 Frs": "20 Francs Suisse",
+    "50 Pesos": "50 Pesos Or",
+    "US 20$": "20 Dollars US",
+    "Souverain": "Souverain",
+    "Krugerrand": "Krugerrand",
+    "Union Latine": "Union Latine",
+    "Lingot 1kg": "Lingot 1Kg Or",
+    "Lingotin de 500 G": "Lingot 500g Or",
+    "Lingotin de 250 G": "Lingot 250g Or",
+    "Lingotin de 100 G": "Lingot 100g Or",
+    "Lingotin de 50 G": "Lingot 50g Or",
+    "Lingotin 1 Oz": "Lingotin 1 Once Or",
+    "Lingotin de 20 G": "Lingot 20g Or",
+    "Lingotin de 10 G": "Lingot 10g Or",
+}
+
 # ligne LPDO -> page produit Fidso Arcachon
 FIDSO = {
     "Maple leaf 1 oz": ("pieces-argent", "maple-leaf-1-oz"),
@@ -92,6 +112,11 @@ DEMO = {
         "Lingot 250g Argent": (410.80, 282.00)},
     "godot_bijoux": {"24K": 99.73, "22K": 87.57, "18K": 69.68, "14K": 50.83, "9K": 32.28,
                      "argent_pieces_g": 1.0085},
+    "godot_or": {"20 Francs Napoléon": (660.00, 593.00), "20 Francs Suisse": (660.00, 593.00), "50 Pesos Or": (4162.50, 3836.50),
+                 "20 Dollars US": (3357.00, 3030.00), "Souverain": (817.50, 750.00), "Krugerrand": (3405.50, 3175.50),
+                 "10 Francs Napoléon": (354.50, 290.00), "Union Latine": (672.50, 591.00),
+                 "Lingot 1Kg Or": (107325.00, 103116.00), "Lingot 500g Or": (54031.00, 51689.50),
+                 "Lingot 250g Or": (27094.50, 25779.00), "Lingotin 1 Once Or": (3404.00, 3141.50)},
     "fidso": {"50 Fr Hercule": 24.78},
 }
 
@@ -115,7 +140,7 @@ def lire_sources(demo, manual):
         etats.append({"id": id_, "ok": ok, "message": msg, "heure": now()})
 
     if demo:
-        data.update(spot=DEMO["spot"], goldfr=DEMO["goldfr"], godot_argent={
+        data.update(spot=DEMO["spot"], goldfr=DEMO["goldfr"], godot_or={S.norm(k): {"achat": v[0], "vente": v[1]} for k, v in DEMO["godot_or"].items()}, godot_argent={
             S.norm(k): {"achat": v[0], "vente": v[1]} for k, v in DEMO["godot_argent"].items()},
             godot_bijoux=DEMO["godot_bijoux"], fidso={k: {"vendre_ht": v} for k, v in DEMO["fidso"].items()})
         etat("demo", True, "Données d'exemple (mode --demo)")
@@ -163,6 +188,17 @@ def lire_sources(demo, manual):
             etat("godot_argent", True, f"{len(ga)} produits")
         except Exception as e:  # noqa: BLE001
             etat("godot_argent", False, str(e)[:200])
+
+        # --- Godot : pièces et lingots or
+        try:
+            html, _ = nav.page(S.URL_GODOT_OR, attendre_texte=r"Napol")
+            go = S.parse_godot_or(html)
+            if len(go) < 3:
+                raise ValueError(f"seulement {len(go)} lignes lues")
+            data["godot_or"] = go
+            etat("godot_or", True, f"{len(go)} produits")
+        except Exception as e:  # noqa: BLE001
+            etat("godot_or", False, str(e)[:200])
 
         # --- Godot : bijoux
         try:
@@ -310,8 +346,16 @@ def main():
                  "14K": (sp["or_g"], 0.585, 0.629), "9K": (sp["or_g"], 0.375, 0.609), "AG 925": (sp["ag_g"], 0.925, 0.61)}
         fb = {k: round(c * t * k2, 2) for k, (c, t, k2) in regle.items()}
         calcule = True
+    go = data.get("godot_or") or {}
+    comp_or = []
+    for row in out["or_rachat"]["rows"]:
+        n = row["name"]
+        g = go.get(S.norm(GODOT_OR[n])) if n in GODOT_OR else None
+        if g:
+            comp_or.append({"name": n, "lpdo": [t["net"] if t else None for t in row["tiers"]],
+                            "godot_vente": g["vente"], "godot_achat": g["achat"]})
     out["concurrents"] = {
-        "argent": comp,
+        "argent": comp, "or": comp_or,
         "bijoux": {"godot": data.get("godot_bijoux"),
                    "fidso": fb or None, "fidso_calcule": calcule,
                    "fidso_date": manual.get("fidso_bijoux_date")},
