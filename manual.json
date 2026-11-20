@@ -1,0 +1,22 @@
+{
+  "_aide": "Fichier à modifier à la main sur GitHub (crayon en haut à droite du fichier) : le site se met à jour tout seul après l'enregistrement. Laisse null ce que tu ne veux pas forcer.",
+  "spot_override": {
+    "_aide": "À remplir seulement si BullionVault est indisponible ou pour forcer un cours (en euros par KILO).",
+    "or_kg": null,
+    "ag_kg": null
+  },
+  "cotations_override": {
+    "_aide": "Pour forcer une cotation argent boursable si gold.fr est indisponible. Exemple : \"Maple leaf 1 oz\": 47.66",
+    "_exemple_non_utilise": null
+  },
+  "fidso_bijoux_eur_g": {
+    "_aide": "Prix de rachat bijoux affichés par Fidso Arcachon (page 'Vendre'), en euros par gramme. Recopie-les ici quand tu les consultes.",
+    "24K": null,
+    "22K": null,
+    "18K": null,
+    "14K": null,
+    "9K": null,
+    "AG 925": null
+  },
+  "fidso_bijoux_date": null
+}
