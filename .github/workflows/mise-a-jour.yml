@@ -1,0 +1,65 @@
+name: Mise à jour des tarifs
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # toutes les 30 min, de ~7h à ~20h (heure de Paris), du lundi au samedi
+    - cron: "*/30 6-18 * * 1-6"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  construire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installer le navigateur de lecture
+        run: |
+          pip install playwright cryptography
+          playwright install --with-deps chromium
+
+      - name: Écrire les règles privées (secret RULES_JSON)
+        env:
+          RULES_JSON: ${{ secrets.RULES_JSON }}
+        run: |
+          test -n "$RULES_JSON" || { echo "Le secret RULES_JSON est vide : voir le README"; exit 1; }
+          mkdir -p config
+          printf '%s' "$RULES_JSON" > config/rules.private.json
+
+      - name: Relever les cours, calculer les tarifs et chiffrer
+        env:
+          SITE_PASSPHRASE: ${{ secrets.SITE_PASSPHRASE }}
+        run: |
+          mkdir -p _site/data
+          cp -r index.html robots.txt assets _site/
+          python3 scripts/build_prices.py --out "$RUNNER_TEMP/prices.json"
+          python3 scripts/encrypt_json.py "$RUNNER_TEMP/prices.json" _site/data/prices.enc.json
+          rm -f config/rules.private.json "$RUNNER_TEMP/prices.json"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  publier:
+    needs: construire
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
