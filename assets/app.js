@@ -22,7 +22,7 @@
   if (typeof module !== "undefined") { module.exports = { ecartPct, margeBijou, eur, pct }; return; }
 
   // ---------- état ----------
-  const S = { data: null, tab: "accueil", filtre: "", cmpTier: 2, cmpOr: 6, poids: "1", titres: null, libre: { i: 0, prix: "" } };
+  const S = { data: null, tab: "accueil", filtre: "", cmpTier: 2, cmpOr: 6, cmpTierV: 2, cmpOrV: 6, poids: "1", titres: null, libre: { i: 0, prix: "" } };
   const $ = s => document.querySelector(s);
   const vue = $("#vue");
 
@@ -259,14 +259,23 @@
 
   // ---------- concurrents ----------
   const badge = p => p == null ? '<span class="neutre">—</span>' : '<span class="' + (p >= 0 ? "pos" : "neg") + '">' + (p >= 0 ? "+" : "") + nb(p, 1) + " %</span>";
+  const badgeV = p => p == null ? '<span class="neutre">—</span>' : '<span class="' + (p <= 0 ? "pos" : "neg") + '">' + (p >= 0 ? "+" : "") + nb(p, 1) + " %</span>";
+  function selTranche(id, tiers, cur) {
+    return '<div class="outils">Tranche LPDO comparée : <select id="' + id + '">' +
+      tiers.map((x, i) => '<option value="' + i + '"' + (i === cur ? " selected" : "") + '>Commission ' + nb(x.commission * 100, 1) + ' %</option>').join("") + '</select></div>';
+  }
   function vConcurrents() {
-    const C = S.data.concurrents, T = S.data.argent_rachat.tiers, ti = S.cmpTier, B = S.data.bijoux;
+    const D = S.data, C = D.concurrents, B = D.bijoux, tmp = D.tmp;
     const fid = C.bijoux.fidso, god = C.bijoux.godot;
-    const lignes = C.argent.map(c => {
-      const l = c.lpdo[ti];
-      return '<tr><td>' + esc(c.name) + '</td><td><b>' + eur(l) + '</b></td><td>' + eur(c.godot_vente) + '</td><td>' + badge(ecartPct(l, c.godot_vente)) +
-        '</td><td>' + eur(c.fidso_net) + '</td><td>' + badge(ecartPct(l, c.fidso_net)) + '</td></tr>';
-    }).join("");
+    const net = v => v == null ? null : v * (1 - tmp);
+    const vide = (n, m) => '<tr><td colspan="' + n + '" class="neutre">' + m + '</td></tr>';
+    const rachat = (liste, idx, avecFid) => (liste || []).map(c => { const l = c.lpdo[idx], gn = net(c.godot_vente);
+      return '<tr><td>' + esc(c.name) + '</td><td><b>' + eur(l) + '</b></td><td>' + eur(c.godot_vente) + '</td><td>' + eur(gn) + '</td><td>' + badge(ecartPct(l, gn)) + '</td>' +
+        (avecFid ? '<td>' + eur(c.fidso_net) + '</td><td>' + badge(ecartPct(l, c.fidso_net)) + '</td>' : "") + '</tr>'; }).join("");
+    const vente = (liste, idx) => (liste || []).map(c => { const l = c.lpdo[idx];
+      return '<tr><td>' + esc(c.name) + '</td><td><b>' + eur(l) + '</b></td><td>' + eur(c.godot_achat) + '</td><td>' + badgeV(ecartPct(l, c.godot_achat)) + '</td></tr>'; }).join("");
+    const rowsAg = rachat(C.argent, S.cmpTier, true), rowsOr = rachat(C.or, S.cmpOr);
+    const rowsAgV = vente(C.argent_vente, S.cmpTierV), rowsOrV = vente(C.or_vente, S.cmpOrV);
     const bij = ["24K", "22K", "18K", "14K", "9K"].map(k => {
       const b = B.lignes.find(x => x.label === k && !x.blanc_rose);
       const g = god && god[k], f = fid && fid[k];
@@ -275,24 +284,26 @@
         '<td>' + eur(g == null ? null : g + bx()) + '</td><td>' + badge(ecartPct(b && b.net_gramme, g == null ? null : g + bx())) + '</td>' + al(g == null ? null : g + bx()) +
         '<td>' + eur(f) + '</td><td>' + badge(ecartPct(b && b.net_gramme, f)) + '</td>' + al(f) + '</tr>';
     }).join("");
-    const orRows = ((C.or || []).map(c => { const l = c.lpdo[S.cmpOr]; return '<tr><td>' + esc(c.name) + '</td><td><b>' + eur(l) + '</b></td><td>' + eur(c.godot_vente) + '</td><td>' + badge(ecartPct(l, c.godot_vente)) + '</td></tr>'; })).join("");
-    vue.innerHTML = '<h2>Comparatif concurrents</h2><p class="aide">Écart = LPDO par rapport au concurrent (<span class="pos">vert</span> : on paie plus cher le client, <span class="neg">rouge</span> : moins cher). Marges en <span class="neg">rouge</span> sous 15 %.</p>' +
-      '<h3>Rachat pièces et lingots argent</h3><div class="outils">Tranche LPDO comparée : <select id="ct">' +
-      T.map((x, i) => '<option value="' + i + '"' + (i === ti ? " selected" : "") + '>' + 'Commission ' + nb(x.commission * 100, 1) + ' %</option>').join("") + '</select></div>' +
-      '<div class="carte"><table><thead><tr><th>Pièce</th><th>LPDO net</th><th>Godot.fr « Vente »</th><th>Écart</th><th>Fidso net (HT − TMP)</th><th>Écart</th></tr></thead><tbody>' +
-      (lignes || '<tr><td colspan="6" class="neutre">Aucune donnée concurrent disponible.</td></tr>') + '</tbody></table></div>' +
-      '<p class="aide">Godot.fr : prix « Vente » affiché sur le site godot.fr (à confirmer : TMP déjà déduite ou non). Godot Bordeaux (bijoux uniquement) = godot.fr ' + eur(bx(), 0) + ' par gramme. Fidso Arcachon : « Vendre HT » × (1 − ' + nb(S.data.tmp * 100, 1) + ' % de TMP).</p>' +
-      '<h3>Rachat pièces et lingots or</h3><div class="outils">Tranche LPDO comparée : <select id="co">' +
-      S.data.or_rachat.tiers.map((x, i) => '<option value="' + i + '"' + (i === S.cmpOr ? " selected" : "") + '>Commission ' + nb(x.commission * 100, 1) + ' %</option>').join("") + '</select></div>' +
-      '<div class="carte"><table><thead><tr><th>Pièce</th><th>LPDO net</th><th>Godot.fr « Vous vendez »</th><th>Écart</th></tr></thead><tbody>' +
-      (orRows || '<tr><td colspan="4" class="neutre">Aucune donnée Godot pour l\'or (voir l\'état des sources sur l\'accueil).</td></tr>') + '</tbody></table></div>' +
-      '<p class="aide">Godot.fr : prix « Vous vendez » du site godot.fr (ce que reçoit le client). Notre prix est le net client de la tranche choisie.</p>' +
+    const hd = (a, extra) => '<div class="carte"><table><thead><tr><th>Pièce</th><th>LPDO ' + a + '</th>' + extra + '</tr></thead><tbody>';
+    vue.innerHTML = '<h2>Comparatif concurrents</h2><p class="aide">Rachat : écart = LPDO par rapport au concurrent (<span class="pos">vert</span> : on paie plus cher le client, <span class="neg">rouge</span> : moins cher). Vente : <span class="pos">vert</span> si on vend moins cher que Godot, <span class="neg">rouge</span> si plus cher. Marges en <span class="neg">rouge</span> sous 15 %.</p>' +
+      '<h3>Rachat pièces et lingots argent</h3>' + selTranche("ct", D.argent_rachat.tiers, S.cmpTier) +
+      hd("net", '<th>Godot.fr « Vente » (HT)</th><th>Godot net (− TMP ' + nb(tmp * 100, 1) + ' %)</th><th>Écart</th><th>Fidso net (HT − TMP)</th><th>Écart</th>') +
+      (rowsAg || vide(7, "Aucune donnée concurrent disponible.")) + '</tbody></table></div>' +
+      '<p class="aide">Godot.fr affiche ses prix hors TMP : on retire ' + nb(tmp * 100, 1) + ' % pour comparer au net client LPDO. Fidso Arcachon : « Vendre HT » × (1 − ' + nb(tmp * 100, 1) + ' % de TMP).</p>' +
+      '<h3>Rachat pièces et lingots or</h3>' + selTranche("co", D.or_rachat.tiers, S.cmpOr) +
+      hd("net", '<th>Godot.fr « Vous vendez » (HT)</th><th>Godot net (− TMP ' + nb(tmp * 100, 1) + ' %)</th><th>Écart</th>') +
+      (rowsOr || vide(5, "Aucune donnée Godot pour l\'or (voir l\'état des sources sur l\'accueil).")) + '</tbody></table></div>' +
+      '<h3>Vente pièces et lingots argent</h3>' + selTranche("cta", D.argent_vente.tiers, S.cmpTierV) +
+      hd("vente", '<th>Godot.fr « Vous achetez »</th><th>Écart</th>') + (rowsAgV || vide(4, "Aucune donnée Godot.")) + '</tbody></table></div>' +
+      '<h3>Vente pièces et lingots or</h3>' + selTranche("coa", D.or_vente.tiers, S.cmpOrV) +
+      hd("vente", '<th>Godot.fr « Vous achetez »</th><th>Écart</th>') + (rowsOrV || vide(4, "Aucune donnée Godot.")) + '</tbody></table></div>' +
+      '<p class="aide">Vente : prix auquel le client achète chez Godot.fr (« Vous achetez ») comparé à notre prix de vente de la tranche choisie.</p>' +
       '<h3>Rachat bijoux or (au gramme)</h3><div class="carte large"><table><thead><tr><th>Titre</th><th>LPDO net/g</th><th>Godot.fr /g</th><th>Écart</th><th>Notre marge si on s\'aligne</th><th>Godot Bordeaux /g</th><th>Écart</th><th>Notre marge si on s\'aligne</th><th>Fidso /g</th><th>Écart</th><th>Notre marge si on s\'aligne</th></tr></thead><tbody>' + bij + '</tbody></table></div>' +
       '<p class="aide">Godot.fr : prix de l\'estimateur du site godot.fr (kit postal, minimum 100 €). Fidso : ' +
       (fid && C.bijoux.fidso_calcule ? "calculé d'après le relevé du 20/11/2026 (spot × titre × coefficient : 76 % pour 24K/22K/18K, 62,9 % pour 14K, 60,9 % pour 9K, 61 % pour l'argent), à confirmer avec un 2e relevé" : fid ? "saisi à la main" + (C.bijoux.fidso_date ? " le " + esc(C.bijoux.fidso_date) : "") + " dans data/manual.json." : "pas encore saisi (voir data/manual.json).") +
       ' La marge « si on s\'aligne » utilise la formule du fichier bijoux : (revente fonte − prix) × ' + nb(B.marge_coef, 4) + '. Pour tous les prix intermédiaires, voir la grille de l\'onglet Rachat bijoux.</p>';
-    vue.querySelector("#ct").addEventListener("change", e => { S.cmpTier = +e.target.value; vConcurrents(); });
-    vue.querySelector("#co").addEventListener("change", e => { S.cmpOr = +e.target.value; vConcurrents(); });
+    [["ct", "cmpTier"], ["co", "cmpOr"], ["cta", "cmpTierV"], ["coa", "cmpOrV"]].forEach(([id, k]) =>
+      vue.querySelector("#" + id).addEventListener("change", e => { S[k] = +e.target.value; vConcurrents(); }));
   }
 
   charger();
