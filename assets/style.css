@@ -59,3 +59,24 @@ tr.base td{background:#fffbe9;font-weight:600}tr.base td:first-child{background:
 .pill{border:1px solid #cfcabb;background:#fff;border-radius:99px;padding:4px 11px;margin:2px;font:inherit;font-size:13px;cursor:pointer;color:var(--gris)}
 .pill.on{background:var(--or);border-color:var(--or);color:#fff}
 @media(max-width:700px){table.det th,table.det td{padding:5px 6px;font-size:12.5px}}
+
+/* v3 : défilement toujours visible, lignes sélectionnables, saisie */
+.carte.large{max-height:calc(100vh - 190px);overflow:scroll;scrollbar-gutter:stable both-edges}
+.carte.large::-webkit-scrollbar,.carte::-webkit-scrollbar{height:15px;width:15px}
+.carte.large::-webkit-scrollbar-track,.carte::-webkit-scrollbar-track{background:#efe9d6}
+.carte.large::-webkit-scrollbar-thumb,.carte::-webkit-scrollbar-thumb{background:#b08d2c;border-radius:8px;border:3px solid #efe9d6}
+.carte{overflow-x:auto}
+tbody tr{cursor:pointer}
+tbody tr.sel td{background:#fff3b0!important;box-shadow:inset 0 1px 0 #d8b400,inset 0 -1px 0 #d8b400}
+tbody tr:hover td{background:#f9f4e2}
+tbody tr.sel:hover td{background:#ffec80!important}
+table.bij td,table.bij th{padding:11px 12px;font-size:14.5px;line-height:1.5}
+table.bij tbody tr{height:46px}
+table.bij td:first-child,table.bij th:first-child{position:sticky;left:0;z-index:1;background:#fff;box-shadow:1px 0 0 #e0d6b6}
+table.bij thead th:first-child{z-index:3;background:#f6efdc}
+tr.conc td:first-child{background:#eaf3fb}tr.base td:first-child{background:#fffbe9}
+tbody tr.sel td:first-child{background:#fff3b0!important}
+input.ed{width:78px;padding:4px 6px;border:1px solid #b08d2c;border-radius:6px;background:#fffdf3;font:inherit;text-align:right}
+td.in{white-space:nowrap}
+tr.edl td:first-child{font-weight:650}
+.pill.tt{background:#f6efdc;border-color:#d8c88a;font-weight:600}
