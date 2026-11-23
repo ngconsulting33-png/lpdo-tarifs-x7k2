@@ -105,7 +105,7 @@ FIDSO = {
 
 # Données d'exemple (relevées le 20/11/2026) pour l'essai --demo
 DEMO = {
-    "spot": {"or_kg": 103339.0, "ag_kg": 1240.0, "heure": "20 novembre 2026, 08:18 (GMT)"},
+    "spot": {"or_kg": 103339.0, "ag_kg": 1240.0, "var_or_kg": {"eur": -9375.45, "pct": -8.29}, "var_ag_kg": {"eur": 21.5, "pct": 1.76}, "heure": "20 novembre 2026, 08:18 (GMT)"},
     "goldfr": {
         "Maple Leaf 1 oz": 47.66, "Vienna Philharmonic 1 oz": 47.42, "Kangourou 1 oz": 46.30,
         "Britannia 1 oz": 47.42, "American Eagle 1 oz": 49.36, "Krugerrand Argent 1 oz": 47.42,
@@ -167,6 +167,7 @@ def lire_sources(demo, manual):
                     raise ValueError("prix au kilo introuvable")
                 spot[cle] = kg
                 spot["heure_" + cle] = heure
+                spot["var_" + cle] = S.parse_variation_semaine(texte)  # None si la page ne l'affiche pas
                 etat("bullionvault_" + cle, True, f"{kg:.2f} €/kg")
             except Exception as e:  # noqa: BLE001
                 etat("bullionvault_" + cle, False, str(e)[:200])
@@ -316,6 +317,7 @@ def main():
                  "or_g": round(or_kg / 1000, 2), "ag_g": round(ag_kg / 1000, 4),
                  "heure_or": spot.get("heure_or_kg") or spot.get("heure"),
                  "heure_ag": spot.get("heure_ag_kg") or spot.get("heure"),
+                 "var_or": spot.get("var_or_kg"), "var_ag": spot.get("var_ag_kg"),
                  "manuel": bool(ov.get("or_kg") or ov.get("ag_kg"))},
         "cours_utilises": {
             "argent": ag_kg,
