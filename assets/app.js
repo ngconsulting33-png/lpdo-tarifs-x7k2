@@ -141,6 +141,23 @@
     ({ accueil: vAccueil, bijoux: vBijoux, concurrents: vConcurrents }[t] || (() => vPieces(t)))();
     window.scrollTo(0, y);
   }
+  // barre de défilement horizontale au-dessus des tableaux, synchronisée avec celle du tableau
+  function barresHautes() {
+    vue.querySelectorAll(".carte").forEach(c => {
+      const prec = c.previousElementSibling;
+      if (prec && prec.classList.contains("topscroll")) { prec.firstChild.style.width = c.scrollWidth + "px"; return; }
+      if (c.scrollWidth <= c.clientWidth + 2) return;
+      const h = document.createElement("div"); h.className = "topscroll"; h.innerHTML = "<div></div>";
+      h.firstChild.style.width = c.scrollWidth + "px";
+      let verrou = false;
+      h.addEventListener("scroll", () => { if (!verrou) { verrou = true; c.scrollLeft = h.scrollLeft; } verrou = false; });
+      c.addEventListener("scroll", () => { if (!verrou) { verrou = true; h.scrollLeft = c.scrollLeft; } verrou = false; });
+      c.parentNode.insertBefore(h, c);
+    });
+  }
+  new MutationObserver(barresHautes).observe(vue, { childList: true });
+  window.addEventListener("resize", barresHautes);
+
   // surbrillance : un clic sur une ligne la repère, un 2e clic l'enlève (mémorisé par tableau)
   vue.addEventListener("click", e => {
     if (e.target.closest("input,select,button,a,th")) return;
