@@ -104,17 +104,20 @@
   }
 
   // variation sur 1 semaine (BullionVault) : vert ▲ si +, rouge ▼ si −
-  function varHTML(v, court) {
+  function varHTML(v, court, lib, titre) {
     if (!v || v.pct == null) return "";
     const c = v.pct > 0 ? "pos" : v.pct < 0 ? "neg" : "neutre", f = v.pct > 0 ? "▲" : v.pct < 0 ? "▼" : "■";
-    return ' <span class="var ' + c + '" title="Variation sur une semaine (BullionVault)">' + f + " " + (v.pct > 0 ? "+" : "") + nb(v.pct, 2) + " %" +
-      (court ? "" : " <small>(" + (v.eur > 0 ? "+" : "") + eur(v.eur, 0) + "/kg, 1 sem.)</small>") + "</span>";
+    return ' <span class="var ' + c + '" title="' + esc(titre || "") + '">' + f + " " + (v.pct > 0 ? "+" : "") + nb(v.pct, 2) + " %" +
+      (court ? ' <small>' + lib + '</small>' : " <small>(" + (v.eur > 0 ? "+" : "") + eur(v.eur, 0) + "/kg, " + lib + ")</small>") + "</span>";
   }
+  const varJour = v => varHTML(v, false, "depuis la veille", v && v.depuis ? "Par rapport au dernier relevé du " + v.depuis : "");
+  const varSem = v => varHTML(v, false, "1 sem.", "Variation sur une semaine (BullionVault)");
+  const varBarre = (j, w) => j ? varHTML(j, true, "jour", "Depuis la veille (dernier relevé du " + j.depuis + ")") : varHTML(w, true, "sem.", "Variation sur une semaine (BullionVault)");
   function barreCours() {
     const s = S.data.spot;
     $("#spotbar").innerHTML =
-      '<span>Or <b>' + eur(s.or_g) + '/g</b> <small>(' + eur(s.or_kg, 0) + '/kg)</small>' + varHTML(s.var_or, true) + '</span>' +
-      '<span>Argent <b>' + eur(s.ag_g, 3) + '/g</b> <small>(' + eur(s.ag_kg, 0) + '/kg)</small>' + varHTML(s.var_ag, true) + '</span>' +
+      '<span>Or <b>' + eur(s.or_g) + '/g</b> <small>(' + eur(s.or_kg, 0) + '/kg)</small>' + varBarre(s.jour_or, s.var_or) + '</span>' +
+      '<span>Argent <b>' + eur(s.ag_g, 3) + '/g</b> <small>(' + eur(s.ag_kg, 0) + '/kg)</small>' + varBarre(s.jour_ag, s.var_ag) + '</span>' +
       '<span><small>Mis à jour ' + new Date(S.data.genere_le).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) + '</small></span>';
   }
 
@@ -141,18 +144,26 @@
     ({ accueil: vAccueil, bijoux: vBijoux, concurrents: vConcurrents }[t] || (() => vPieces(t)))();
     window.scrollTo(0, y);
   }
-  // barre de défilement horizontale au-dessus des tableaux, synchronisée avec celle du tableau
+  // barre de défilement horizontale au-dessus des tableaux : dessinée en HTML, synchronisée avec le tableau
   function barresHautes() {
     vue.querySelectorAll(".carte").forEach(c => {
-      const prec = c.previousElementSibling;
-      if (prec && prec.classList.contains("topscroll")) { prec.firstChild.style.width = c.scrollWidth + "px"; return; }
-      if (c.scrollWidth <= c.clientWidth + 2) return;
-      const h = document.createElement("div"); h.className = "topscroll"; h.innerHTML = "<div></div>";
-      h.firstChild.style.width = c.scrollWidth + "px";
-      let verrou = false;
-      h.addEventListener("scroll", () => { if (!verrou) { verrou = true; c.scrollLeft = h.scrollLeft; } verrou = false; });
-      c.addEventListener("scroll", () => { if (!verrou) { verrou = true; h.scrollLeft = c.scrollLeft; } verrou = false; });
-      c.parentNode.insertBefore(h, c);
+      let h = c.previousElementSibling; h = h && h.classList.contains("topbar") ? h : null;
+      const deborde = c.scrollWidth > c.clientWidth + 2;
+      if (!deborde) { if (h) h.remove(); return; }
+      if (!h) {
+        h = document.createElement("div"); h.className = "topbar"; h.innerHTML = '<div class="pouce"></div>';
+        c.parentNode.insertBefore(h, c);
+        const p = h.firstChild;
+        const maj = () => { const r = c.clientWidth / c.scrollWidth, w = h.clientWidth; p.style.width = Math.max(40, r * w) + "px";
+          p.style.left = (c.scrollLeft / (c.scrollWidth - c.clientWidth || 1)) * (w - p.offsetWidth) + "px"; };
+        h._maj = maj; c.addEventListener("scroll", maj);
+        const aller = x => { const w = h.clientWidth - p.offsetWidth; const pos = Math.min(Math.max(x - h.getBoundingClientRect().left - p.offsetWidth / 2, 0), w);
+          c.scrollLeft = (pos / (w || 1)) * (c.scrollWidth - c.clientWidth); };
+        h.addEventListener("pointerdown", e => { h.setPointerCapture(e.pointerId); aller(e.clientX); h._drag = true; });
+        h.addEventListener("pointermove", e => { if (h._drag) aller(e.clientX); });
+        h.addEventListener("pointerup", () => { h._drag = false; });
+      }
+      h._maj();
     });
   }
   new MutationObserver(barresHautes).observe(vue, { childList: true });
@@ -173,12 +184,12 @@
   function vAccueil() {
     const d = S.data, c = d.cours_utilises;
     vue.innerHTML = '<h2>Cours du moment</h2><div class="grille">' +
-      '<div class="kpi"><div class="l">Or (BullionVault)</div><div class="v">' + eur(d.spot.or_kg, 0) + ' /kg</div><div class="l">' + eur(d.spot.or_g) + ' le gramme · ' + esc(d.spot.heure_or || "") + '</div><div class="l">' + (varHTML(d.spot.var_or, false) || "Variation non disponible") + '</div></div>' +
-      '<div class="kpi"><div class="l">Argent (BullionVault)</div><div class="v">' + eur(d.spot.ag_kg, 0) + ' /kg</div><div class="l">' + eur(d.spot.ag_g, 3) + ' le gramme · ' + esc(d.spot.heure_ag || "") + '</div><div class="l">' + (varHTML(d.spot.var_ag, false) || "Variation non disponible") + '</div></div>' +
+      '<div class="kpi"><div class="l">Or (BullionVault)</div><div class="v">' + eur(d.spot.or_kg, 0) + ' /kg</div><div class="l">' + eur(d.spot.or_g) + ' le gramme · ' + esc(d.spot.heure_or || "") + '</div><div class="l">' + ((varJour(d.spot.jour_or) || '<span class="neutre">Variation du jour : disponible dès demain</span>') + '<br>' + (varSem(d.spot.var_or) || "")) + '</div></div>' +
+      '<div class="kpi"><div class="l">Argent (BullionVault)</div><div class="v">' + eur(d.spot.ag_kg, 0) + ' /kg</div><div class="l">' + eur(d.spot.ag_g, 3) + ' le gramme · ' + esc(d.spot.heure_ag || "") + '</div><div class="l">' + ((varJour(d.spot.jour_ag) || '<span class="neutre">Variation du jour : disponible dès demain</span>') + '<br>' + (varSem(d.spot.var_ag) || "")) + '</div></div>' +
       '<div class="kpi"><div class="l">Taxe métaux précieux (TMP)</div><div class="v">' + nb(d.tmp * 100, 1) + ' %</div><div class="l">déduite dans les tableaux de rachat</div></div></div>' +
       '<h3>Cours utilisés dans les tableaux</h3><p class="aide">Argent : ' + eur(c.argent, 0) + '/kg · Or rachat : ' + eur(c.or_rachat, 0) + '/kg · Or vente : ' + eur(c.or_vente, 0) + '/kg</p>' +
       '<h3>État des sources</h3><div>' + (d.sources || []).map(x => '<span class="pastille ' + (x.ok ? "ok" : "ko") + '" title="' + esc(x.message) + '">' + (x.ok ? "✓ " : "✗ ") + esc(x.id) + (x.message ? " · " + esc(x.message) : "") + '</span>').join("") + '</div>' +
-      '<h3>Comment ça marche</h3><p class="aide">Les cours sont lus automatiquement toutes les 30 minutes (jours ouvrés et samedi). Les tableaux reprennent les mêmes colonnes et les mêmes formules que les fichiers Excel. Rien à saisir.</p>';
+      '<h3>Comment ça marche</h3><p class="aide">Les cours sont mis à jour automatiquement toutes les 15 minutes, du lundi au vendredi de 9 h à 18 h (la page se recharge d\'elle-même). En dehors de ces horaires, les cours affichés sont ceux du dernier relevé. Les tableaux reprennent les mêmes colonnes et les mêmes formules que les fichiers Excel. Rien à saisir.</p>';
   }
 
   // ---------- pièces : tableaux détaillés comme dans les fichiers ----------
