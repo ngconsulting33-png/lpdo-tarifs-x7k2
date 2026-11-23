@@ -18,6 +18,7 @@ URL_ARGENT = "https://or.bullionvault.fr/Cours-De-L-Argent-Metal.do"
 URL_GOLDFR = "https://www.gold.fr/cours-argent-prix-de-l-argent/"
 URL_GODOT_ARGENT = "https://www.achat-or-et-argent.fr/argent/cours-de-l-argent"
 URL_GODOT_OR = "https://www.achat-or-et-argent.fr/or/cours-de-l-or"
+URL_GODOT_MODERNES = "https://www.achat-or-et-argent.fr/or/4/pieces-modernes"
 URL_GODOT_BIJOUX = "https://www.achat-or-et-argent.fr/rachat-de-bijoux/commander-son-kit"
 URL_FIDSO = "https://www.fidso-or.com/arcachon/{cat}/{slug}"
 
@@ -112,6 +113,35 @@ def parse_variation_semaine(text):
     return {"eur": sg * eur, "pct": sg * pct}
 
 
+def _nombre(txt):
+    return float(re.sub(r"\s", "", txt).replace(",", "."))
+
+
+def parse_godot_produit(texte):
+    """Page produit Godot (or) -> {'achat': prix 1 à n pièces, 'vente': prix « Vous vendez »} ou None."""
+    t = re.sub(r"[\u00a0\u202f]", " ", texte or "")
+    a = re.search(r"de\s+1\s+à\s+\d+\s+pièces?\D{0,25}?(\d[\d ]*[.,]\d{2})", t, re.I)
+    v = re.search(r"VOUS\s+VENDEZ\D{0,80}?(\d[\d ]*[.,]\d{2})", t, re.I)
+    if not (a and v):
+        return None
+    return {"achat": _nombre(a.group(1)), "vente": _nombre(v.group(1))}
+
+
+def liens_modernes(hrefs):
+    """Adresses de pièces d'une once en or parmi les liens d'une liste Godot (hors 1/2, 1/4, 1/10 once...)."""
+    out = []
+    for h in hrefs:
+        m = re.search(r"/or/([a-z0-9\-]+)/\d+/?$", h or "")
+        if m and "1-once" in m.group(1) and h not in out:
+            out.append(h)
+    return out
+
+
+def nom_depuis_adresse(url):
+    m = re.search(r"/or/([a-z0-9\-]+)/\d+/?$", url)
+    return m.group(1).replace("-", " ") if m else None
+
+
 def parse_goldfr(html):
     """{nom normalisé: {'nom', 'prix', 'prime'}} depuis le tableau de gold.fr.
     Tolère une colonne vide (miniature) avant l'intitulé : le nom est la première cellule
@@ -194,6 +224,22 @@ class Navigateur:
     def __exit__(self, *a):
         self._browser.close()
         self._pw.stop()
+
+    def liens(self, url, timeout=30000):
+        """Tous les liens d'une page dont la liste se charge au défilement."""
+        p = self._ctx.new_page()
+        try:
+            p.goto(url, wait_until="domcontentloaded", timeout=timeout)
+            try:
+                p.wait_for_load_state("networkidle", timeout=15000)
+            except Exception:
+                pass
+            for _ in range(6):
+                p.mouse.wheel(0, 4000)
+                p.wait_for_timeout(700)
+            return p.eval_on_selector_all("a[href]", "els => els.map(e => e.href)")
+        finally:
+            p.close()
 
     def page(self, url, attendre_texte=None, timeout=30000, bonus=None):
         p = self._ctx.new_page()
