@@ -216,6 +216,29 @@ def lire_sources(demo, manual):
         except Exception as e:  # noqa: BLE001
             etat("godot_or", False, str(e)[:200])
 
+        # --- Godot : pièces modernes d'une once en or (une page par produit)
+        try:
+            urls = S.liens_modernes(nav.liens(S.URL_GODOT_MODERNES))[:12]
+            if not urls:
+                raise ValueError("aucune pièce d'une once trouvée dans la liste")
+            mod, vus = {}, 0
+            for u in urls:
+                try:
+                    _, txt = nav.page(u, attendre_texte=r"VOUS\s+VENDEZ")
+                    r = S.parse_godot_produit(txt)
+                    nom = S.nom_depuis_adresse(u)
+                    if r and nom:
+                        mod[S.norm(nom)] = {"nom": nom, **r}
+                        vus += 1
+                except Exception:  # noqa: BLE001
+                    pass
+            if not vus:
+                raise ValueError(f"{len(urls)} pièces trouvées mais aucun prix lu")
+            data.setdefault("godot_or", {}).update(mod)
+            etat("godot_modernes", True, f"{vus}/{len(urls)} pièces : " + ", ".join(sorted(m["nom"] for m in mod.values()))[:150])
+        except Exception as e:  # noqa: BLE001
+            etat("godot_modernes", False, str(e)[:200])
+
         # --- Godot : bijoux
         try:
             _, texte = nav.page(S.URL_GODOT_BIJOUX, attendre_texte=r"24 carats[\s\S]{0,40}\d+[.,]\d+\s*€")
@@ -248,6 +271,7 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--rules", default=os.path.join(ROOT, "config", "rules.private.json"))
     ap.add_argument("--manual", default=os.path.join(ROOT, "data", "manual.json"))
+    ap.add_argument("--history", default=None, help="historique des cours (json) récupéré du site publié")
     ap.add_argument("--demo", action="store_true", help="données d'exemple, sans internet")
     a = ap.parse_args()
 
@@ -277,6 +301,28 @@ def main():
         val = (manual.get("cotations_override") or {}).get(lab) or val
         if val is not None:
             cot[lab] = val
+
+    # ---- historique : une valeur par jour (la dernière du jour), pour la variation « depuis la veille »
+    hist = {k: v for k, v in (lire_json(a.history, {}) if a.history else {}).items() if isinstance(v, dict)}
+    if a.demo and not hist:
+        hist = {"2026-11-20": {"or_kg": or_kg / 1.0082, "ag_kg": ag_kg / 0.9893}}
+    try:
+        from zoneinfo import ZoneInfo
+        aujourdhui = dt.datetime.now(ZoneInfo("Europe/Paris")).date().isoformat()
+    except Exception:  # noqa: BLE001
+        aujourdhui = dt.date.today().isoformat()
+    if a.demo:
+        aujourdhui = "2026-11-23"
+    hist[aujourdhui] = {"or_kg": or_kg, "ag_kg": ag_kg, "heure": now()}
+    for k in sorted(hist)[:-12]:   # on garde 12 jours
+        del hist[k]
+    veille = [k for k in sorted(hist) if k < aujourdhui]
+    ref = hist[veille[-1]] if veille else None
+
+    def var_jour(actuel, cle):
+        if not ref or not ref.get(cle):
+            return None
+        return {"eur": round(actuel - ref[cle], 2), "pct": round((actuel / ref[cle] - 1) * 100, 2), "depuis": veille[-1]}
 
     # ---- calculs LPDO
     off_ag = rules.get("bijoux_argent_offset_eur_kg", 0.0)
@@ -316,6 +362,7 @@ def main():
     tmp = rules["argent_rachat"]["tmp"]
     out = {
         "genere_le": now(),
+        "historique": hist,
         "demo": bool(a.demo),
         "tmp": tmp,
         "spot": {"or_kg": or_kg, "ag_kg": ag_kg,
@@ -323,6 +370,7 @@ def main():
                  "heure_or": spot.get("heure_or_kg") or spot.get("heure"),
                  "heure_ag": spot.get("heure_ag_kg") or spot.get("heure"),
                  "var_or": spot.get("var_or_kg"), "var_ag": spot.get("var_ag_kg"),
+                 "jour_or": var_jour(or_kg, "or_kg"), "jour_ag": var_jour(ag_kg, "ag_kg"),
                  "manuel": bool(ov.get("or_kg") or ov.get("ag_kg"))},
         "cours_utilises": {
             "argent": ag_kg,
@@ -367,7 +415,8 @@ def main():
     comp_or = []
     for row in out["or_rachat"]["rows"]:
         n = row["name"]
-        g = go.get(S.norm(GODOT_OR[n])) if n in GODOT_OR else None
+        want = S.norm(GODOT_OR[n]) if n in GODOT_OR else None
+        g = (go.get(want) or next((v for k, v in go.items() if k.startswith(want + " ")), None)) if want else None
         if g:
             comp_or.append({"name": n, "lpdo": [t["net"] if t else None for t in row["tiers"]],
                             "godot_vente": g["vente"], "godot_achat": g["achat"]})
