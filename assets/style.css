@@ -80,3 +80,6 @@ input.ed{width:78px;padding:4px 6px;border:1px solid #b08d2c;border-radius:6px;b
 td.in{white-space:nowrap}
 tr.edl td:first-child{font-weight:650}
 .pill.tt{background:#f6efdc;border-color:#d8c88a;font-weight:600}
+
+.var{font-weight:700;white-space:nowrap}.var small{font-weight:500}
+.spotbar .var.pos{color:#1b7a3d}.spotbar .var.neg{color:#c0262d}
