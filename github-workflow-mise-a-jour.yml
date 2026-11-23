@@ -40,15 +40,22 @@ jobs:
           mkdir -p config
           printf '%s' "$RULES_JSON" > config/rules.private.json
 
+      - name: Récupérer l'historique des cours (variation du jour)
+        continue-on-error: true
+        env:
+          SITE_PASSPHRASE: ${{ secrets.SITE_PASSPHRASE }}
+        run: python3 scripts/fetch_history.py "$RUNNER_TEMP/history.json"
+
       - name: Relever les cours, calculer les tarifs et chiffrer
         env:
           SITE_PASSPHRASE: ${{ secrets.SITE_PASSPHRASE }}
         run: |
           mkdir -p _site/data
           cp -r index.html robots.txt assets _site/
-          python3 scripts/build_prices.py --out "$RUNNER_TEMP/prices.json"
+          test -f "$RUNNER_TEMP/history.json" || echo '{}' > "$RUNNER_TEMP/history.json"
+          python3 scripts/build_prices.py --out "$RUNNER_TEMP/prices.json" --history "$RUNNER_TEMP/history.json"
           python3 scripts/encrypt_json.py "$RUNNER_TEMP/prices.json" _site/data/prices.enc.json
-          rm -f config/rules.private.json "$RUNNER_TEMP/prices.json"
+          rm -f config/rules.private.json "$RUNNER_TEMP/prices.json" "$RUNNER_TEMP/history.json"
 
       - uses: actions/upload-pages-artifact@v3
         with:
