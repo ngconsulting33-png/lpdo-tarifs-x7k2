@@ -83,3 +83,10 @@ tr.edl td:first-child{font-weight:650}
 
 .var{font-weight:700;white-space:nowrap}.var small{font-weight:500}
 .spotbar .var.pos{color:#1b7a3d}.spotbar .var.neg{color:#c0262d}
+
+.topscroll{overflow-x:scroll;overflow-y:hidden;height:17px;margin:6px 0 2px;scrollbar-gutter:stable}
+.topscroll>div{height:1px}
+.topscroll::-webkit-scrollbar{height:15px}
+.topscroll::-webkit-scrollbar-track{background:#efe9d6;border-radius:8px}
+.topscroll::-webkit-scrollbar-thumb{background:#b08d2c;border-radius:8px;border:3px solid #efe9d6}
+.carte.large::-webkit-scrollbar:horizontal,.carte::-webkit-scrollbar:horizontal{height:0}
