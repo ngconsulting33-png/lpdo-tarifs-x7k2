@@ -101,7 +101,7 @@ def parse_variation_semaine(text):
     """Variation sur une semaine affichée par BullionVault : « Une Semaine Variation | -9 375,45 € (8,29 %) ».
     Renvoie {'eur': -9375.45, 'pct': -8.29} (le signe du pourcentage est celui du montant) ou None."""
     t = re.sub(r"[\u00a0\u202f]", " ", text or "")
-    m = re.search(r"Une\s+Semaine\s+Variation\D{0,15}?([-−+]?)\s*(\d[\d ]*(?:[.,]\d+)?)\s*€\s*\(\s*([-−+]?)\s*(\d+(?:[.,]\d+)?)\s*%", t, re.I)
+    m = re.search(r"Une\s+Semaine\s+Variation\D{0,120}?([-−+]?)\s*(\d[\d ]*(?:[.,]\d+)?)\s*€\s*\(\s*([-−+]?)\s*(\d+(?:[.,]\d+)?)\s*%", t, re.I)
     if not m:
         return None
     eur = parse_eur(m.group(2)); pct = parse_eur(m.group(4))
@@ -195,7 +195,7 @@ class Navigateur:
         self._browser.close()
         self._pw.stop()
 
-    def page(self, url, attendre_texte=None, timeout=30000):
+    def page(self, url, attendre_texte=None, timeout=30000, bonus=None):
         p = self._ctx.new_page()
         try:
             p.goto(url, wait_until="domcontentloaded", timeout=timeout)
@@ -207,6 +207,14 @@ class Navigateur:
                 p.wait_for_function(
                     "t => new RegExp(t, 'i').test(document.body.innerText)",
                     arg=attendre_texte, timeout=timeout)
-            return p.content(), p.inner_text("body")
+            texte = p.inner_text("body")
+            if bonus and not re.search(bonus, texte, re.I):
+                # contenu chargé en retard ou masqué (onglet) : on attend un peu, puis on lit aussi le texte caché
+                try:
+                    p.wait_for_function("t => new RegExp(t, 'i').test(document.body.textContent)", arg=bonus, timeout=12000)
+                except Exception:
+                    pass
+                texte += "\n" + re.sub(r"\s+", " ", p.evaluate("document.body.textContent") or "")
+            return p.content(), texte
         finally:
             p.close()
