@@ -103,11 +103,18 @@
     } catch (e) { /* on garde les données déjà affichées */ }
   }
 
+  // variation sur 1 semaine (BullionVault) : vert ▲ si +, rouge ▼ si −
+  function varHTML(v, court) {
+    if (!v || v.pct == null) return "";
+    const c = v.pct > 0 ? "pos" : v.pct < 0 ? "neg" : "neutre", f = v.pct > 0 ? "▲" : v.pct < 0 ? "▼" : "■";
+    return ' <span class="var ' + c + '" title="Variation sur une semaine (BullionVault)">' + f + " " + (v.pct > 0 ? "+" : "") + nb(v.pct, 2) + " %" +
+      (court ? "" : " <small>(" + (v.eur > 0 ? "+" : "") + eur(v.eur, 0) + "/kg, 1 sem.)</small>") + "</span>";
+  }
   function barreCours() {
     const s = S.data.spot;
     $("#spotbar").innerHTML =
-      '<span>Or <b>' + eur(s.or_g) + '/g</b> <small>(' + eur(s.or_kg, 0) + '/kg)</small></span>' +
-      '<span>Argent <b>' + eur(s.ag_g, 3) + '/g</b> <small>(' + eur(s.ag_kg, 0) + '/kg)</small></span>' +
+      '<span>Or <b>' + eur(s.or_g) + '/g</b> <small>(' + eur(s.or_kg, 0) + '/kg)</small>' + varHTML(s.var_or, true) + '</span>' +
+      '<span>Argent <b>' + eur(s.ag_g, 3) + '/g</b> <small>(' + eur(s.ag_kg, 0) + '/kg)</small>' + varHTML(s.var_ag, true) + '</span>' +
       '<span><small>Mis à jour ' + new Date(S.data.genere_le).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) + '</small></span>';
   }
 
@@ -149,8 +156,8 @@
   function vAccueil() {
     const d = S.data, c = d.cours_utilises;
     vue.innerHTML = '<h2>Cours du moment</h2><div class="grille">' +
-      '<div class="kpi"><div class="l">Or (BullionVault)</div><div class="v">' + eur(d.spot.or_kg, 0) + ' /kg</div><div class="l">' + eur(d.spot.or_g) + ' le gramme · ' + esc(d.spot.heure_or || "") + '</div></div>' +
-      '<div class="kpi"><div class="l">Argent (BullionVault)</div><div class="v">' + eur(d.spot.ag_kg, 0) + ' /kg</div><div class="l">' + eur(d.spot.ag_g, 3) + ' le gramme · ' + esc(d.spot.heure_ag || "") + '</div></div>' +
+      '<div class="kpi"><div class="l">Or (BullionVault)</div><div class="v">' + eur(d.spot.or_kg, 0) + ' /kg</div><div class="l">' + eur(d.spot.or_g) + ' le gramme · ' + esc(d.spot.heure_or || "") + '</div><div class="l">' + (varHTML(d.spot.var_or, false) || "Variation non disponible") + '</div></div>' +
+      '<div class="kpi"><div class="l">Argent (BullionVault)</div><div class="v">' + eur(d.spot.ag_kg, 0) + ' /kg</div><div class="l">' + eur(d.spot.ag_g, 3) + ' le gramme · ' + esc(d.spot.heure_ag || "") + '</div><div class="l">' + (varHTML(d.spot.var_ag, false) || "Variation non disponible") + '</div></div>' +
       '<div class="kpi"><div class="l">Taxe métaux précieux (TMP)</div><div class="v">' + nb(d.tmp * 100, 1) + ' %</div><div class="l">déduite dans les tableaux de rachat</div></div></div>' +
       '<h3>Cours utilisés dans les tableaux</h3><p class="aide">Argent : ' + eur(c.argent, 0) + '/kg · Or rachat : ' + eur(c.or_rachat, 0) + '/kg · Or vente : ' + eur(c.or_vente, 0) + '/kg</p>' +
       '<h3>État des sources</h3><div>' + (d.sources || []).map(x => '<span class="pastille ' + (x.ok ? "ok" : "ko") + '" title="' + esc(x.message) + '">' + (x.ok ? "✓ " : "✗ ") + esc(x.id) + (x.message ? " · " + esc(x.message) : "") + '</span>').join("") + '</div>' +
