@@ -12,6 +12,7 @@ import argparse
 import datetime as dt
 import json
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -161,14 +162,18 @@ def lire_sources(demo, manual):
         spot = {}
         for cle, url, motif in (("or_kg", S.URL_OR, r"par\s+kilo"), ("ag_kg", S.URL_ARGENT, r"par\s+kilo")):
             try:
-                _, texte = nav.page(url, attendre_texte=motif)
+                _, texte = nav.page(url, attendre_texte=motif, bonus=r"Semaine\s+Variation")
                 kg, heure = S.parse_bullionvault(texte)
                 if kg is None:
                     raise ValueError("prix au kilo introuvable")
                 spot[cle] = kg
                 spot["heure_" + cle] = heure
                 spot["var_" + cle] = S.parse_variation_semaine(texte)  # None si la page ne l'affiche pas
-                etat("bullionvault_" + cle, True, f"{kg:.2f} €/kg")
+                msg = f"{kg:.2f} €/kg"
+                if not spot["var_" + cle]:
+                    i = texte.lower().find("variation")
+                    msg += " · variation introuvable : " + (re.sub(r"\s+", " ", texte[max(0, i - 30):i + 90]) if i >= 0 else "mot « Variation » absent de la page")
+                etat("bullionvault_" + cle, True, msg)
             except Exception as e:  # noqa: BLE001
                 etat("bullionvault_" + cle, False, str(e)[:200])
         data["spot"] = spot
