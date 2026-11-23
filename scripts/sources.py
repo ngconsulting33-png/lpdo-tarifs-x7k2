@@ -97,6 +97,21 @@ def parse_bullionvault(text):
     return kg, (when.group(1).strip() if when else None)
 
 
+def parse_variation_semaine(text):
+    """Variation sur une semaine affichée par BullionVault : « Une Semaine Variation | -9 375,45 € (8,29 %) ».
+    Renvoie {'eur': -9375.45, 'pct': -8.29} (le signe du pourcentage est celui du montant) ou None."""
+    t = re.sub(r"[\u00a0\u202f]", " ", text or "")
+    m = re.search(r"Une\s+Semaine\s+Variation\D{0,15}?([-−+]?)\s*(\d[\d ]*(?:[.,]\d+)?)\s*€\s*\(\s*([-−+]?)\s*(\d+(?:[.,]\d+)?)\s*%", t, re.I)
+    if not m:
+        return None
+    eur = parse_eur(m.group(2)); pct = parse_eur(m.group(4))
+    if eur is None or pct is None:
+        return None
+    neg = (m.group(1) or m.group(3)) in ("-", "−")
+    sg = -1 if neg else 1
+    return {"eur": sg * eur, "pct": sg * pct}
+
+
 def parse_goldfr(html):
     """{nom normalisé: {'nom', 'prix', 'prime'}} depuis le tableau de gold.fr.
     Tolère une colonne vide (miniature) avant l'intitulé : le nom est la première cellule
