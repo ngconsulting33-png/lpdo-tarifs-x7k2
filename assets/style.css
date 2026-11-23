@@ -90,3 +90,9 @@ tr.edl td:first-child{font-weight:650}
 .topscroll::-webkit-scrollbar-track{background:#efe9d6;border-radius:8px}
 .topscroll::-webkit-scrollbar-thumb{background:#b08d2c;border-radius:8px;border:3px solid #efe9d6}
 .carte.large::-webkit-scrollbar:horizontal,.carte::-webkit-scrollbar:horizontal{height:0}
+
+/* barre de défilement du haut (HTML) */
+.topbar{position:relative;height:16px;margin:8px 0 4px;background:#e6dcb8;border-radius:9px;cursor:pointer;touch-action:none;user-select:none}
+.topbar .pouce{position:absolute;top:2px;height:12px;background:#b08d2c;border-radius:7px;min-width:40px}
+.topbar:hover .pouce{background:#8f7020}
+.topscroll{display:none}
